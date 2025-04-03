@@ -1,6 +1,6 @@
 
 import { useRef, useEffect, useState } from 'react';
-import { fabric } from 'fabric';
+import { Canvas as FabricCanvas } from 'fabric';
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle
 } from '@/components/ui/card';
@@ -21,7 +21,7 @@ type Tool = 'select' | 'draw' | 'rectangle' | 'circle' | 'text' | 'pan';
 
 const Whiteboard = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [fabricCanvas, setFabricCanvas] = useState<fabric.Canvas | null>(null);
+  const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const [activeColor, setActiveColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(2);
@@ -37,7 +37,7 @@ const Whiteboard = () => {
     const width = container?.clientWidth || 800;
     const height = 600;
     
-    const canvas = new fabric.Canvas(canvasRef.current, {
+    const canvas = new FabricCanvas(canvasRef.current, {
       width,
       height,
       backgroundColor: '#ffffff',
@@ -99,7 +99,7 @@ const Whiteboard = () => {
     let lastPosX = 0;
     let lastPosY = 0;
     
-    const handleMouseDown = (e: fabric.IEvent) => {
+    const handleMouseDown = (e: any) => {
       if (activeTool !== 'pan') return;
       
       isPanning = true;
@@ -109,7 +109,7 @@ const Whiteboard = () => {
       fabricCanvas.setCursor('grabbing');
     };
     
-    const handleMouseMove = (e: fabric.IEvent) => {
+    const handleMouseMove = (e: any) => {
       if (!isPanning) return;
       
       const vpt = fabricCanvas.viewportTransform;
@@ -142,7 +142,7 @@ const Whiteboard = () => {
   }, [fabricCanvas, activeTool]);
   
   // Save canvas state for undo/redo
-  const saveCanvasState = (canvas: fabric.Canvas) => {
+  const saveCanvasState = (canvas: FabricCanvas) => {
     if (!canvas) return;
     
     // Get JSON data
@@ -191,7 +191,9 @@ const Whiteboard = () => {
   const handleToolClick = (tool: Tool) => {
     setActiveTool(tool);
     
-    if (tool === 'rectangle' && fabricCanvas) {
+    if (!fabricCanvas) return;
+
+    if (tool === 'rectangle') {
       const rect = new fabric.Rect({
         left: 100,
         top: 100,
@@ -201,7 +203,7 @@ const Whiteboard = () => {
       });
       fabricCanvas.add(rect);
       fabricCanvas.setActiveObject(rect);
-    } else if (tool === 'circle' && fabricCanvas) {
+    } else if (tool === 'circle') {
       const circle = new fabric.Circle({
         left: 100,
         top: 100,
@@ -210,7 +212,7 @@ const Whiteboard = () => {
       });
       fabricCanvas.add(circle);
       fabricCanvas.setActiveObject(circle);
-    } else if (tool === 'text' && fabricCanvas) {
+    } else if (tool === 'text') {
       const text = new fabric.Textbox('Texte', {
         left: 100,
         top: 100,
