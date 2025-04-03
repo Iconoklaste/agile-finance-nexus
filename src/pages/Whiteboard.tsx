@@ -1,23 +1,28 @@
 
 import { useRef, useEffect, useState } from 'react';
-import { Canvas as FabricCanvas } from 'fabric';
+import { Canvas as FabricCanvas, Circle, IEvent, Rect, Textbox } from 'fabric';
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
-} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 import {
-  Pencil, Square, Circle, Type, Download, Upload,
-  Save, Trash2, Undo, Redo, MousePointer, Hand
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
-type Tool = 'select' | 'draw' | 'rectangle' | 'circle' | 'text' | 'pan';
+// Définir les types pour les outils
+type Tool = 'select' | 'pen' | 'rectangle' | 'circle' | 'text' | 'eraser' | 'pan' | 'zoom';
+
+// Type pour l'état du canvas
+type CanvasState = {
+  objects: object[];
+  background: string;
+};
 
 const Whiteboard = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -25,14 +30,14 @@ const Whiteboard = () => {
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const [activeColor, setActiveColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(2);
-  const [canvasHistory, setCanvasHistory] = useState<string[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  
-  // Initialize fabric canvas
+  const [canvasStates, setCanvasStates] = useState<string[]>([]);
+  const [currentStateIndex, setCurrentStateIndex] = useState(-1);
+
+  // Initialiser le canvas
   useEffect(() => {
     if (!canvasRef.current) return;
-    
-    // Calculate the container size
+
+    // Récupérer la largeur du conteneur parent
     const container = canvasRef.current.parentElement;
     const width = container?.clientWidth || 800;
     const height = 600;
@@ -41,57 +46,53 @@ const Whiteboard = () => {
       width,
       height,
       backgroundColor: '#ffffff',
+      selection: true,
     });
-    
+
     setFabricCanvas(canvas);
     
-    // Save initial state
-    saveCanvasState(canvas);
-    
+    // Configurer les outils
+    canvas.isDrawingMode = false;
+    canvas.freeDrawingBrush.width = brushSize;
+    canvas.freeDrawingBrush.color = activeColor;
+
+    // Enregistrer l'état initial du canvas
+    const initialState = JSON.stringify(canvas.toJSON());
+    setCanvasStates([initialState]);
+    setCurrentStateIndex(0);
+
+    // Nettoyer
     return () => {
       canvas.dispose();
     };
   }, []);
-  
-  // Update tool settings
+
+  // Mettre à jour les paramètres du pinceau
   useEffect(() => {
     if (!fabricCanvas) return;
     
-    fabricCanvas.isDrawingMode = activeTool === 'draw';
+    fabricCanvas.freeDrawingBrush.width = brushSize;
+    fabricCanvas.freeDrawingBrush.color = activeColor;
     
-    if (activeTool === 'draw' && fabricCanvas.freeDrawingBrush) {
-      fabricCanvas.freeDrawingBrush.color = activeColor;
-      fabricCanvas.freeDrawingBrush.width = brushSize;
-    }
-    
-    if (activeTool === 'pan') {
-      fabricCanvas.defaultCursor = 'grab';
-      fabricCanvas.hoverCursor = 'grab';
+    if (activeTool === 'select') {
+      fabricCanvas.isDrawingMode = false;
+      fabricCanvas.selection = true;
+    } else if (activeTool === 'pen') {
+      fabricCanvas.isDrawingMode = true;
+      fabricCanvas.selection = false;
+    } else if (activeTool === 'eraser') {
+      fabricCanvas.isDrawingMode = true;
+      fabricCanvas.freeDrawingBrush.color = '#ffffff';
+      fabricCanvas.selection = false;
     } else {
-      fabricCanvas.defaultCursor = 'default';
-      fabricCanvas.hoverCursor = 'move';
+      fabricCanvas.isDrawingMode = false;
+      fabricCanvas.selection = true;
     }
     
+    fabricCanvas.renderAll();
   }, [activeTool, activeColor, brushSize, fabricCanvas]);
-  
-  // Object manipulation mode
-  useEffect(() => {
-    if (!fabricCanvas) return;
-    
-    const handleSelectionCreated = () => {
-      if (activeTool !== 'select' && activeTool !== 'pan') {
-        fabricCanvas.discardActiveObject().renderAll();
-      }
-    };
-    
-    fabricCanvas.on('selection:created', handleSelectionCreated);
-    
-    return () => {
-      fabricCanvas.off('selection:created', handleSelectionCreated);
-    };
-  }, [fabricCanvas, activeTool]);
-  
-  // Pan functionality
+
+  // Configurer les fonctionnalités de pan et zoom
   useEffect(() => {
     if (!fabricCanvas) return;
     
@@ -99,45 +100,62 @@ const Whiteboard = () => {
     let lastPosX = 0;
     let lastPosY = 0;
     
-    const handleMouseDown = (e: any) => {
+    const handleMouseDown = (e: IEvent) => {
       if (activeTool !== 'pan') return;
       
       isPanning = true;
       fabricCanvas.selection = false;
-      lastPosX = e.e.clientX;
-      lastPosY = e.e.clientY;
+      lastPosX = e.pointer?.x || 0;
+      lastPosY = e.pointer?.y || 0;
       fabricCanvas.setCursor('grabbing');
     };
     
-    const handleMouseMove = (e: any) => {
+    const handleMouseMove = (e: IEvent) => {
       if (!isPanning) return;
       
       const vpt = fabricCanvas.viewportTransform;
       if (!vpt) return;
       
-      vpt[4] += e.e.clientX - lastPosX;
-      vpt[5] += e.e.clientY - lastPosY;
+      vpt[4] += (e.pointer?.x || 0) - lastPosX;
+      vpt[5] += (e.pointer?.y || 0) - lastPosY;
       
-      lastPosX = e.e.clientX;
-      lastPosY = e.e.clientY;
+      lastPosX = e.pointer?.x || 0;
+      lastPosY = e.pointer?.y || 0;
       
       fabricCanvas.requestRenderAll();
     };
     
     const handleMouseUp = () => {
       isPanning = false;
-      fabricCanvas.selection = true;
-      fabricCanvas.setCursor('grab');
+      fabricCanvas.setCursor('default');
+      fabricCanvas.selection = activeTool === 'select';
     };
     
     fabricCanvas.on('mouse:down', handleMouseDown);
     fabricCanvas.on('mouse:move', handleMouseMove);
     fabricCanvas.on('mouse:up', handleMouseUp);
     
+    // Gérer le zoom avec la molette
+    fabricCanvas.on('mouse:wheel', (opt) => {
+      if (activeTool !== 'zoom') return;
+      
+      const delta = opt.e.deltaY;
+      let zoom = fabricCanvas.getZoom();
+      zoom *= 0.999 ** delta;
+      
+      // Limiter le zoom
+      zoom = Math.min(Math.max(zoom, 0.5), 5);
+      
+      fabricCanvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
+      opt.e.preventDefault();
+      opt.e.stopPropagation();
+    });
+    
     return () => {
       fabricCanvas.off('mouse:down', handleMouseDown);
       fabricCanvas.off('mouse:move', handleMouseMove);
       fabricCanvas.off('mouse:up', handleMouseUp);
+      fabricCanvas.off('mouse:wheel');
     };
   }, [fabricCanvas, activeTool]);
   
@@ -146,346 +164,286 @@ const Whiteboard = () => {
     if (!canvas) return;
     
     // Get JSON data
-    const json = canvas.toJSON();
-    const jsonString = JSON.stringify(json);
+    const json = JSON.stringify(canvas.toJSON());
     
-    // Add to history
-    setCanvasHistory(prevHistory => {
-      const newHistory = [...prevHistory.slice(0, historyIndex + 1), jsonString];
-      // Limit history size
-      if (newHistory.length > 20) {
-        newHistory.shift();
-      }
-      return newHistory;
-    });
+    // Remove any future states
+    const newStates = canvasStates.slice(0, currentStateIndex + 1);
+    newStates.push(json);
     
-    setHistoryIndex(prev => {
-      // If trimming history, adjust the index
-      if (prev + 1 >= 20) return 19;
-      return prev + 1;
+    // Update states
+    setCanvasStates(newStates);
+    setCurrentStateIndex(newStates.length - 1);
+  };
+  
+  // Handle undo action
+  const handleUndo = () => {
+    if (currentStateIndex <= 0 || !fabricCanvas) return;
+    
+    const newIndex = currentStateIndex - 1;
+    const stateToRestore = canvasStates[newIndex];
+    
+    fabricCanvas.loadFromJSON(JSON.parse(stateToRestore), () => {
+      fabricCanvas.renderAll();
+      setCurrentStateIndex(newIndex);
     });
   };
   
-  // Object added event
-  useEffect(() => {
-    if (!fabricCanvas) return;
+  // Handle redo action
+  const handleRedo = () => {
+    if (currentStateIndex >= canvasStates.length - 1 || !fabricCanvas) return;
     
-    const handleObjectAdded = () => {
-      saveCanvasState(fabricCanvas);
-    };
+    const newIndex = currentStateIndex + 1;
+    const stateToRestore = canvasStates[newIndex];
     
-    const handleObjectModified = () => {
-      saveCanvasState(fabricCanvas);
-    };
-    
-    fabricCanvas.on('object:added', handleObjectAdded);
-    fabricCanvas.on('object:modified', handleObjectModified);
-    
-    return () => {
-      fabricCanvas.off('object:added', handleObjectAdded);
-      fabricCanvas.off('object:modified', handleObjectModified);
-    };
-  }, [fabricCanvas, historyIndex]);
+    fabricCanvas.loadFromJSON(JSON.parse(stateToRestore), () => {
+      fabricCanvas.renderAll();
+      setCurrentStateIndex(newIndex);
+    });
+  };
   
-  // Handle tool selection
   const handleToolClick = (tool: Tool) => {
     setActiveTool(tool);
     
     if (!fabricCanvas) return;
 
     if (tool === 'rectangle') {
-      const rect = new fabric.Rect({
+      const rect = new Rect({
         left: 100,
         top: 100,
-        fill: activeColor,
         width: 100,
         height: 100,
+        fill: activeColor,
       });
       fabricCanvas.add(rect);
       fabricCanvas.setActiveObject(rect);
     } else if (tool === 'circle') {
-      const circle = new fabric.Circle({
+      const circle = new Circle({
         left: 100,
         top: 100,
-        fill: activeColor,
         radius: 50,
+        fill: activeColor,
       });
       fabricCanvas.add(circle);
       fabricCanvas.setActiveObject(circle);
     } else if (tool === 'text') {
-      const text = new fabric.Textbox('Texte', {
+      const text = new Textbox('Texte', {
         left: 100,
         top: 100,
-        fontFamily: 'Roboto',
+        fontSize: 20,
         fill: activeColor,
-        width: 200,
       });
       fabricCanvas.add(text);
       fabricCanvas.setActiveObject(text);
     }
+    
+    // Save the state after adding a new object
+    if (['rectangle', 'circle', 'text'].includes(tool)) {
+      saveCanvasState(fabricCanvas);
+    }
   };
   
-  // Clear canvas
-  const handleClear = () => {
+  const handleClearCanvas = () => {
     if (!fabricCanvas) return;
     fabricCanvas.clear();
     fabricCanvas.setBackgroundColor('#ffffff', fabricCanvas.renderAll.bind(fabricCanvas));
     saveCanvasState(fabricCanvas);
-    toast.success('Tableau effacé');
   };
   
-  // Undo function
-  const handleUndo = () => {
-    if (!fabricCanvas || historyIndex <= 0) return;
-    
-    const newIndex = historyIndex - 1;
-    const jsonString = canvasHistory[newIndex];
-    
-    fabricCanvas.loadFromJSON(jsonString, () => {
-      fabricCanvas.renderAll();
-      setHistoryIndex(newIndex);
-    });
+  const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const color = e.target.value;
+    setActiveColor(color);
   };
   
-  // Redo function
-  const handleRedo = () => {
-    if (!fabricCanvas || historyIndex >= canvasHistory.length - 1) return;
-    
-    const newIndex = historyIndex + 1;
-    const jsonString = canvasHistory[newIndex];
-    
-    fabricCanvas.loadFromJSON(jsonString, () => {
-      fabricCanvas.renderAll();
-      setHistoryIndex(newIndex);
-    });
+  const handleBrushSizeChange = (value: number[]) => {
+    setBrushSize(value[0]);
   };
   
-  // Save canvas
-  const handleSave = () => {
+  const handleSaveImage = () => {
     if (!fabricCanvas) return;
     
-    // Convert canvas to JSON
-    const json = fabricCanvas.toJSON();
-    const jsonString = JSON.stringify(json);
-    
-    // Create a blob and download
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `whiteboard-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    
-    toast.success('Tableau sauvegardé');
-  };
-  
-  // Export as image
-  const handleExport = () => {
-    if (!fabricCanvas) return;
-    
-    const dataUrl = fabricCanvas.toDataURL({
+    const dataURL = fabricCanvas.toDataURL({
       format: 'png',
-      quality: 1
+      quality: 1,
+      multiplier: 1
     });
     
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = `whiteboard-${new Date().toISOString().slice(0, 10)}.png`;
-    a.click();
+    const link = document.createElement('a');
+    link.download = 'whiteboard.png';
+    link.href = dataURL;
     
-    toast.success('Image exportée');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
   
-  return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">Tableau Collaboratif</h1>
+  const handleSaveJSON = () => {
+    if (!fabricCanvas) return;
+    
+    const json = JSON.stringify(fabricCanvas.toJSON());
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.download = 'whiteboard.json';
+    link.href = url;
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+  
+  const handleLoadJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!fabricCanvas || !e.target.files || e.target.files.length === 0) return;
+    
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = (event) => {
+      if (!event.target || typeof event.target.result !== 'string') return;
       
-      <Tabs defaultValue="whiteboard" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="whiteboard">Tableau</TabsTrigger>
-          <TabsTrigger value="saved">Tableaux Sauvegardés</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="whiteboard">
-          <Card className="overflow-hidden">
-            <CardHeader className="p-4 border-b">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                  {/* Tool buttons */}
-                  <Button
-                    variant={activeTool === 'select' ? 'secondary' : 'outline'}
-                    size="sm"
-                    onClick={() => handleToolClick('select')}
-                    title="Sélectionner"
-                  >
-                    <MousePointer className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={activeTool === 'pan' ? 'secondary' : 'outline'}
-                    size="sm"
-                    onClick={() => handleToolClick('pan')}
-                    title="Déplacer la vue"
-                  >
-                    <Hand className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={activeTool === 'draw' ? 'secondary' : 'outline'}
-                    size="sm"
-                    onClick={() => handleToolClick('draw')}
-                    title="Dessiner"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={activeTool === 'rectangle' ? 'secondary' : 'outline'}
-                    size="sm"
-                    onClick={() => handleToolClick('rectangle')}
-                    title="Rectangle"
-                  >
-                    <Square className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={activeTool === 'circle' ? 'secondary' : 'outline'}
-                    size="sm"
-                    onClick={() => handleToolClick('circle')}
-                    title="Cercle"
-                  >
-                    <Circle className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={activeTool === 'text' ? 'secondary' : 'outline'}
-                    size="sm"
-                    onClick={() => handleToolClick('text')}
-                    title="Texte"
-                  >
-                    <Type className="h-4 w-4" />
-                  </Button>
-                  <span className="h-6 w-px bg-border mx-1" />
-                  <div className="flex items-center gap-1 px-2">
-                    <label htmlFor="color-input" className="sr-only">Couleur</label>
-                    <input
-                      id="color-input"
-                      type="color"
-                      value={activeColor}
-                      onChange={(e) => setActiveColor(e.target.value)}
-                      className="w-6 h-6 rounded-md border cursor-pointer"
-                    />
-                  </div>
-                  {activeTool === 'draw' && (
-                    <Select
-                      value={brushSize.toString()}
-                      onValueChange={(value) => setBrushSize(Number(value))}
-                    >
-                      <SelectTrigger className="w-24">
-                        <SelectValue placeholder="Taille" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">Fin</SelectItem>
-                        <SelectItem value="2">Normal</SelectItem>
-                        <SelectItem value="5">Large</SelectItem>
-                        <SelectItem value="10">Extra large</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
+      try {
+        const jsonData = JSON.parse(event.target.result);
+        fabricCanvas.loadFromJSON(jsonData, () => {
+          fabricCanvas.renderAll();
+          saveCanvasState(fabricCanvas);
+        });
+      } catch (error) {
+        console.error('Error loading JSON:', error);
+      }
+    };
+    
+    reader.readAsText(file);
+  };
+
+  return (
+    <div className="grid gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Tableau collaboratif</CardTitle>
+          <CardDescription>
+            Utilisez les outils pour dessiner et collaborer visuellement
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2 border-b pb-4">
+              <Button 
+                onClick={() => handleToolClick('select')} 
+                variant={activeTool === 'select' ? 'default' : 'outline'}
+                size="sm"
+              >
+                Sélectionner
+              </Button>
+              <Button 
+                onClick={() => handleToolClick('pen')} 
+                variant={activeTool === 'pen' ? 'default' : 'outline'}
+                size="sm"
+              >
+                Crayon
+              </Button>
+              <Button 
+                onClick={() => handleToolClick('rectangle')} 
+                variant={activeTool === 'rectangle' ? 'default' : 'outline'}
+                size="sm"
+              >
+                Rectangle
+              </Button>
+              <Button 
+                onClick={() => handleToolClick('circle')} 
+                variant={activeTool === 'circle' ? 'default' : 'outline'}
+                size="sm"
+              >
+                Cercle
+              </Button>
+              <Button 
+                onClick={() => handleToolClick('text')} 
+                variant={activeTool === 'text' ? 'default' : 'outline'}
+                size="sm"
+              >
+                Texte
+              </Button>
+              <Button 
+                onClick={() => handleToolClick('eraser')} 
+                variant={activeTool === 'eraser' ? 'default' : 'outline'}
+                size="sm"
+              >
+                Gomme
+              </Button>
+              <Button 
+                onClick={() => handleToolClick('pan')} 
+                variant={activeTool === 'pan' ? 'default' : 'outline'}
+                size="sm"
+              >
+                Déplacer
+              </Button>
+              <Button 
+                onClick={() => handleToolClick('zoom')} 
+                variant={activeTool === 'zoom' ? 'default' : 'outline'}
+                size="sm"
+              >
+                Zoom
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b pb-4">
+              <div>
+                <label className="block text-sm mb-1">Couleur</label>
                 <div className="flex items-center gap-2">
-                  {/* Action buttons */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleUndo}
-                    disabled={historyIndex <= 0}
-                    title="Annuler"
-                  >
-                    <Undo className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRedo}
-                    disabled={historyIndex >= canvasHistory.length - 1}
-                    title="Refaire"
-                  >
-                    <Redo className="h-4 w-4" />
-                  </Button>
-                  <span className="h-6 w-px bg-border mx-1" />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSave}
-                    title="Sauvegarder"
-                  >
-                    <Save className="h-4 w-4 mr-1" />
-                    <span className="hidden sm:inline">Sauvegarder</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleExport}
-                    title="Exporter en PNG"
-                  >
-                    <Download className="h-4 w-4 mr-1" />
-                    <span className="hidden sm:inline">Exporter</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-red-500 hover:text-red-600"
-                    onClick={handleClear}
-                    title="Effacer tout"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <Input 
+                    type="color" 
+                    value={activeColor} 
+                    onChange={handleColorChange} 
+                    className="w-10 h-10 p-1" 
+                  />
+                  <span>{activeColor}</span>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="w-full bg-white border-t overflow-hidden">
-                <canvas 
-                  ref={canvasRef} 
-                  className={cn(
-                    "w-full",
-                    activeTool === 'pan' && "cursor-grab"
-                  )}
+              <div>
+                <label className="block text-sm mb-1">Taille du crayon: {brushSize}</label>
+                <Slider 
+                  value={[brushSize]} 
+                  onValueChange={handleBrushSizeChange} 
+                  min={1} 
+                  max={20} 
+                  step={1}
                 />
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="saved">
-          <Card>
-            <CardHeader>
-              <CardTitle>Tableaux Sauvegardés</CardTitle>
-              <CardDescription>Charger un tableau sauvegardé précédemment</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-end gap-4">
-                  <div className="flex-1">
-                    <label htmlFor="load-file" className="text-sm font-medium block mb-1.5">
-                      Charger depuis un fichier
-                    </label>
-                    <Input id="load-file" type="file" accept=".json" />
-                  </div>
-                  <Button 
-                    onClick={() => toast.info('Fonctionnalité en cours de développement')}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Charger
-                  </Button>
-                </div>
-                
-                <div className="border rounded-md p-8 text-center">
-                  <p className="text-muted-foreground">
-                    Vous n'avez pas encore de tableaux sauvegardés.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={handleUndo} variant="outline" size="sm">
+                Annuler
+              </Button>
+              <Button onClick={handleRedo} variant="outline" size="sm">
+                Refaire
+              </Button>
+              <Button onClick={handleClearCanvas} variant="outline" size="sm">
+                Effacer tout
+              </Button>
+              <Button onClick={handleSaveImage} variant="outline" size="sm">
+                Exporter PNG
+              </Button>
+              <Button onClick={handleSaveJSON} variant="outline" size="sm">
+                Sauvegarder
+              </Button>
+              <Button variant="outline" size="sm" className="relative">
+                <input 
+                  type="file" 
+                  accept=".json" 
+                  onChange={handleLoadJSON} 
+                  className="absolute inset-0 opacity-0 cursor-pointer" 
+                />
+                Charger
+              </Button>
+            </div>
+            
+            <div className="border rounded-lg overflow-hidden bg-white">
+              <canvas ref={canvasRef} className="w-full touch-none" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
