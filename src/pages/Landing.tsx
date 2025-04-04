@@ -12,7 +12,7 @@ export default function Landing() {
         <div className="container flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="bg-primary rounded-md h-8 w-8"></div>
-            <span className="text-xl font-bold">Agile Finance Nexus</span>
+            <span className="text-xl font-bold">Agile Finance</span>
           </div>
         </div>
       </header>
@@ -31,7 +31,7 @@ export default function Landing() {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-4">
-              <Link to="/features" className="inline-flex items-center">
+              <Link to="/app/dashboard" className="inline-flex items-center">
                 Découvrir les fonctionnalités <ChevronRight className="ml-2 h-4 w-4" />
               </Link>
             </div>
@@ -57,7 +57,7 @@ export default function Landing() {
               <CardHeader>
                 <CardTitle>Connexion</CardTitle>
                 <CardDescription>
-                  Connectez-vous à votre compte Agile Finance Nexus
+                  Connectez-vous à votre compte Agile Finance
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -72,7 +72,7 @@ export default function Landing() {
       <footer className="border-t py-6 bg-muted/50">
         <div className="container flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © 2025 Agile Finance Nexus. Tous droits réservés.
+            © 2025 Agile Finance. Tous droits réservés.
           </p>
           <div className="flex gap-4">
             <Link to="/terms" className="text-sm text-muted-foreground hover:text-foreground">

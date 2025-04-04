@@ -1,4 +1,3 @@
-
 import { useState, ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, LayoutDashboard, FolderKanban, Calculator, Users, FileText, Settings, PanelLeft } from 'lucide-react';
@@ -17,12 +16,12 @@ type NavItem = {
 };
 
 const navigation: NavItem[] = [
-  { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-  { name: 'Projets', path: '/projects', icon: FolderKanban },
-  { name: 'Comptabilité', path: '/accounting', icon: Calculator },
-  { name: 'CRM', path: '/crm', icon: Users },
-  { name: 'Whiteboard', path: '/whiteboard', icon: FileText },
-  { name: 'Paramètres', path: '/settings', icon: Settings },
+  { name: 'Dashboard', path: '/app/dashboard', icon: LayoutDashboard },
+  { name: 'Projets', path: '/app/projects', icon: FolderKanban },
+  { name: 'Comptabilité', path: '/app/accounting', icon: Calculator },
+  { name: 'CRM', path: '/app/crm', icon: Users },
+  { name: 'Whiteboard', path: '/app/whiteboard', icon: FileText },
+  { name: 'Paramètres', path: '/app/settings', icon: Settings },
 ];
 
 export default function MainLayout({ children }: MainLayoutProps) {
@@ -32,7 +31,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
   
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  // On mobile, close the sidebar when a link is clicked
   const handleNavClick = () => {
     if (isMobile) {
       setIsSidebarOpen(false);
@@ -41,7 +39,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
       <div
         className={cn(
           "bg-sidebar text-sidebar-foreground flex flex-col transition-all duration-300 ease-in-out",
@@ -49,11 +46,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
           isMobile && !isSidebarOpen && "hidden"
         )}
       >
-        {/* Logo */}
         <div className="p-4 border-b border-sidebar-border flex items-center justify-between h-16">
-          <span className={cn("font-bold text-lg", !isSidebarOpen && "md:hidden")}>
+          <Link to="/" className={cn("font-bold text-lg", !isSidebarOpen && "md:hidden")}>
             Agile Finance
-          </span>
+          </Link>
           {isMobile && (
             <Button variant="ghost" size="icon" onClick={toggleSidebar}>
               <X className="h-5 w-5" />
@@ -61,7 +57,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
           )}
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 pt-5 pb-4 overflow-y-auto">
           <div className="space-y-1 px-2">
             {navigation.map((item) => (
@@ -91,17 +86,14 @@ export default function MainLayout({ children }: MainLayoutProps) {
           </div>
         </nav>
 
-        {/* User profile or footer */}
         <div className={cn("p-4 border-t border-sidebar-border", !isSidebarOpen && "md:hidden")}>
           <p className="text-sm">
-            © 2025 Agile Finance Nexus
+            © 2025 Agile Finance
           </p>
         </div>
       </div>
 
-      {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top navigation */}
         <header className="bg-white border-b border-border h-16 flex items-center px-4">
           <Button
             variant="ghost"
@@ -116,7 +108,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
           </h1>
         </header>
 
-        {/* Main content area */}
         <main className="flex-1 overflow-auto bg-background p-6">
           {children}
         </main>

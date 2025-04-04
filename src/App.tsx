@@ -26,37 +26,42 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Landing />} />
-          <Route path="/dashboard" element={
+          <Route path="/app" element={
             <MainLayout>
               <Dashboard />
             </MainLayout>
           } />
-          <Route path="/projects" element={
+          <Route path="/app/dashboard" element={
+            <MainLayout>
+              <Dashboard />
+            </MainLayout>
+          } />
+          <Route path="/app/projects" element={
             <MainLayout>
               <Projects />
             </MainLayout>
           } />
-          <Route path="/projects/:id" element={
+          <Route path="/app/projects/:id" element={
             <MainLayout>
               <ProjectDetail />
             </MainLayout>
           } />
-          <Route path="/accounting" element={
+          <Route path="/app/accounting" element={
             <MainLayout>
               <Accounting />
             </MainLayout>
           } />
-          <Route path="/crm" element={
+          <Route path="/app/crm" element={
             <MainLayout>
               <CRM />
             </MainLayout>
           } />
-          <Route path="/whiteboard" element={
+          <Route path="/app/whiteboard" element={
             <MainLayout>
               <Whiteboard />
             </MainLayout>
           } />
-          <Route path="/settings" element={
+          <Route path="/app/settings" element={
             <MainLayout>
               <Settings />
             </MainLayout>
