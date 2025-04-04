@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { formatDate, generateMockProjects, type ProjectPhase } from '@/lib/mock-data';
@@ -38,7 +37,7 @@ const ProjectDetail = () => {
       <div className="flex flex-col items-center justify-center h-96">
         <h2 className="text-2xl font-bold mb-4">Projet non trouvé</h2>
         <p className="text-muted-foreground mb-6">Le projet que vous recherchez n'existe pas.</p>
-        <Button onClick={() => navigate('/projects')}>
+        <Button onClick={() => navigate('/app/projects')}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Retour aux projets
         </Button>
@@ -102,7 +101,7 @@ const ProjectDetail = () => {
         <Button 
           variant="ghost" 
           className="w-fit flex items-center text-muted-foreground hover:text-foreground" 
-          onClick={() => navigate('/projects')}
+          onClick={() => navigate('/app/projects')}
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
           Retour aux projets

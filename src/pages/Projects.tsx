@@ -251,7 +251,7 @@ const Projects = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => navigate(`/projects/${project.id}`)}>
+                      <DropdownMenuItem onClick={() => navigate(`/app/projects/${project.id}`)}>
                         Voir les détails
                       </DropdownMenuItem>
                       <DropdownMenuItem>Modifier</DropdownMenuItem>
@@ -287,7 +287,7 @@ const Projects = () => {
                   <span className="text-muted-foreground">Budget:</span>{' '}
                   <span className="font-medium">{project.budget.toLocaleString('fr-FR')}€</span>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => navigate(`/projects/${project.id}`)}>
+                <Button variant="outline" size="sm" onClick={() => navigate(`/app/projects/${project.id}`)}>
                   Détails
                 </Button>
               </CardFooter>
