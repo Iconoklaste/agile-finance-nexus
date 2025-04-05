@@ -4,6 +4,7 @@ import { addDays, differenceInDays, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Project } from '@/lib/mock-data';
 import { cn } from '@/lib/utils';
+import { CheckSquare, Square } from 'lucide-react';
 
 interface GanttChartProps {
   project: Project;
@@ -36,10 +37,31 @@ const GanttChart = ({ project }: GanttChartProps) => {
       const startPercentage = (start / totalDays) * 100;
       const widthPercentage = (duration / totalDays) * 100;
       
+      // Calculate milestones completion
+      const milestonesCount = phase.milestones?.length || 0;
+      const completedMilestones = phase.milestones?.filter(m => m.completed)?.length || 0;
+      const progressFromMilestones = milestonesCount > 0 
+        ? Math.round((completedMilestones / milestonesCount) * 100) 
+        : 0;
+      
+      // Determine status based on milestones
+      let derivedStatus = 'not-started';
+      if (milestonesCount > 0) {
+        if (completedMilestones === 0) {
+          derivedStatus = 'not-started';
+        } else if (completedMilestones === milestonesCount) {
+          derivedStatus = 'completed';
+        } else {
+          derivedStatus = 'in-progress';
+        }
+      }
+      
       return {
         ...phase,
         startOffset: startPercentage,
-        width: widthPercentage
+        width: widthPercentage,
+        progressFromMilestones,
+        derivedStatus
       };
     });
   }, [project.phases, projectStartDate, totalDays]);
@@ -100,30 +122,56 @@ const GanttChart = ({ project }: GanttChartProps) => {
             {processedPhases.map((phase, i) => (
               <div 
                 key={`phase-${phase.id}`} 
-                className="flex h-14 mb-4 items-center"
+                className="flex flex-col mb-8"
               >
-                <div className="w-1/4 pr-4">
-                  <div className="text-sm font-medium truncate">{phase.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {formatDateShort(phase.startDate)} - {formatDateShort(phase.endDate)}
+                <div className="flex h-14 items-center">
+                  <div className="w-1/4 pr-4">
+                    <div className="text-sm font-medium truncate">{phase.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatDateShort(phase.startDate)} - {formatDateShort(phase.endDate)}
+                    </div>
                   </div>
-                </div>
-                <div className="w-3/4 relative">
-                  <div 
-                    className={cn(
-                      "absolute top-2 h-8 rounded-md",
-                      getStatusColor(phase.status)
-                    )}
-                    style={{ 
-                      left: `${phase.startOffset}%`, 
-                      width: `${phase.width}%` 
-                    }}
-                  >
-                    <div className="h-full flex items-center justify-center text-white text-xs font-medium px-2 truncate">
-                      {phase.progress}%
+                  <div className="w-3/4 relative">
+                    <div 
+                      className={cn(
+                        "absolute top-2 h-8 rounded-md",
+                        getStatusColor(phase.derivedStatus || phase.status)
+                      )}
+                      style={{ 
+                        left: `${phase.startOffset}%`, 
+                        width: `${phase.width}%` 
+                      }}
+                    >
+                      <div className="h-full flex items-center justify-center text-white text-xs font-medium px-2 truncate">
+                        {phase.progressFromMilestones || phase.progress}%
+                      </div>
                     </div>
                   </div>
                 </div>
+                
+                {/* Milestones for this phase */}
+                {phase.milestones && phase.milestones.length > 0 && (
+                  <div className="flex mt-2">
+                    <div className="w-1/4 pr-4">
+                      <div className="text-xs text-muted-foreground">Jalons</div>
+                    </div>
+                    <div className="w-3/4 flex flex-wrap gap-2">
+                      {phase.milestones.map((milestone, idx) => (
+                        <div 
+                          key={`milestone-${phase.id}-${idx}`} 
+                          className="flex items-center gap-1 text-xs"
+                        >
+                          {milestone.completed ? (
+                            <CheckSquare className="h-4 w-4 text-blue-500" />
+                          ) : (
+                            <Square className="h-4 w-4 text-gray-400" />
+                          )}
+                          <span className="max-w-36 truncate">{milestone.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
             

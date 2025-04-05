@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { formatDate, generateMockProjects, type ProjectPhase } from '@/lib/mock-data';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -6,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   ArrowLeft, Calendar, CheckCircle2, Clock, 
   CreditCard, Download, Edit, FileText, PlayCircle, 
@@ -21,16 +23,84 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import GanttChart from '@/components/projects/GanttChart';
 
+// Milestone interface
+interface Milestone {
+  id: string;
+  name: string;
+  completed: boolean;
+}
+
 const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
   // Fetch project data based on id (using mock data for now)
   const projects = generateMockProjects(10);
-  const project = projects.find(p => p.id === id);
+  const [project, setProject] = useState(projects.find(p => p.id === id));
   
   // State for dialog management
   const [isNewPhaseDialogOpen, setIsNewPhaseDialogOpen] = useState(false);
+  const [isNewMilestoneDialogOpen, setIsNewMilestoneDialogOpen] = useState(false);
+  const [currentPhaseId, setCurrentPhaseId] = useState<string | null>(null);
+  const [newMilestoneName, setNewMilestoneName] = useState('');
+  
+  useEffect(() => {
+    // Add milestones to each phase if they don't exist
+    if (project) {
+      const phasesWithMilestones = project.phases.map(phase => {
+        if (!phase.milestones) {
+          // Generate random milestones (1-5) for demonstration
+          const milestoneCount = Math.floor(Math.random() * 5) + 1;
+          const milestones = Array.from({ length: milestoneCount }, (_, i) => ({
+            id: `milestone-${phase.id}-${i}`,
+            name: `Jalon ${i + 1} de ${phase.name}`,
+            completed: Math.random() > 0.5 // Randomly mark some as completed
+          }));
+          
+          return {
+            ...phase,
+            milestones
+          };
+        }
+        return phase;
+      });
+      
+      setProject(prevProject => {
+        if (!prevProject) return null;
+        return {
+          ...prevProject,
+          phases: phasesWithMilestones
+        };
+      });
+    }
+  }, []);
+  
+  useEffect(() => {
+    // Update project progress based on all milestones
+    if (project) {
+      let totalMilestones = 0;
+      let completedMilestones = 0;
+      
+      project.phases.forEach(phase => {
+        if (phase.milestones && phase.milestones.length > 0) {
+          totalMilestones += phase.milestones.length;
+          completedMilestones += phase.milestones.filter(m => m.completed).length;
+        }
+      });
+      
+      const newOverallProgress = totalMilestones > 0 
+        ? Math.round((completedMilestones / totalMilestones) * 100) 
+        : 0;
+      
+      setProject(prevProject => {
+        if (!prevProject) return null;
+        return {
+          ...prevProject,
+          progress: newOverallProgress
+        };
+      });
+    }
+  }, [project?.phases]);
   
   if (!project) {
     return (
@@ -92,6 +162,96 @@ const ProjectDetail = () => {
     // This would normally update the backend, for now just show a toast
     toast.success("Nouvelle phase créée avec succès");
     setIsNewPhaseDialogOpen(false);
+  };
+  
+  const handleCreateMilestone = (event: React.FormEvent) => {
+    event.preventDefault();
+    
+    if (currentPhaseId && newMilestoneName.trim()) {
+      setProject(prevProject => {
+        if (!prevProject) return null;
+        
+        const updatedPhases = prevProject.phases.map(phase => {
+          if (phase.id === currentPhaseId) {
+            const milestones = phase.milestones || [];
+            return {
+              ...phase,
+              milestones: [
+                ...milestones,
+                {
+                  id: `milestone-${phase.id}-${milestones.length}`,
+                  name: newMilestoneName,
+                  completed: false
+                }
+              ]
+            };
+          }
+          return phase;
+        });
+        
+        return {
+          ...prevProject,
+          phases: updatedPhases
+        };
+      });
+      
+      toast.success("Nouveau jalon ajouté avec succès");
+      setIsNewMilestoneDialogOpen(false);
+      setNewMilestoneName('');
+    }
+  };
+  
+  const toggleMilestone = (phaseId: string, milestoneId: string) => {
+    setProject(prevProject => {
+      if (!prevProject) return null;
+      
+      const updatedPhases = prevProject.phases.map(phase => {
+        if (phase.id === phaseId && phase.milestones) {
+          const updatedMilestones = phase.milestones.map(milestone => {
+            if (milestone.id === milestoneId) {
+              return {
+                ...milestone,
+                completed: !milestone.completed
+              };
+            }
+            return milestone;
+          });
+          
+          // Calculate new progress for the phase
+          const completedCount = updatedMilestones.filter(m => m.completed).length;
+          const totalCount = updatedMilestones.length;
+          const newProgress = Math.round((completedCount / totalCount) * 100);
+          
+          // Determine phase status based on milestones
+          let newStatus = phase.status;
+          if (completedCount === 0) {
+            newStatus = 'not-started';
+          } else if (completedCount === totalCount) {
+            newStatus = 'completed';
+          } else {
+            newStatus = 'in-progress';
+          }
+          
+          return {
+            ...phase,
+            milestones: updatedMilestones,
+            progress: newProgress,
+            status: newStatus
+          };
+        }
+        return phase;
+      });
+      
+      return {
+        ...prevProject,
+        phases: updatedPhases
+      };
+    });
+  };
+  
+  const openNewMilestoneDialog = (phaseId: string) => {
+    setCurrentPhaseId(phaseId);
+    setIsNewMilestoneDialogOpen(true);
   };
   
   return (
@@ -358,6 +518,14 @@ const ProjectDetail = () => {
                       </div>
                       
                       <div className="flex items-center gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => openNewMilestoneDialog(phase.id)}
+                        >
+                          <Plus className="h-3.5 w-3.5 mr-1.5" />
+                          Ajouter un jalon
+                        </Button>
                         <Button variant="outline" size="sm">
                           <Edit className="h-3.5 w-3.5 mr-1.5" />
                           Modifier
@@ -367,6 +535,33 @@ const ProjectDetail = () => {
                         </Button>
                       </div>
                     </div>
+                    
+                    {/* Milestones for this phase */}
+                    {phase.milestones && phase.milestones.length > 0 && (
+                      <div className="mt-4 mb-4">
+                        <h4 className="text-sm font-medium text-muted-foreground mb-2">Jalons</h4>
+                        <div className="grid gap-2">
+                          {phase.milestones.map((milestone, idx) => (
+                            <div key={milestone.id} className="flex items-center gap-2">
+                              <Checkbox 
+                                id={milestone.id}
+                                checked={milestone.completed}
+                                onCheckedChange={() => toggleMilestone(phase.id, milestone.id)}
+                              />
+                              <Label 
+                                htmlFor={milestone.id}
+                                className={cn(
+                                  "text-sm cursor-pointer",
+                                  milestone.completed && "line-through text-muted-foreground"
+                                )}
+                              >
+                                {milestone.name}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     
                     <div className="mt-4">
                       <div className="flex items-center justify-between mb-1.5">
@@ -405,6 +600,39 @@ const ProjectDetail = () => {
             </CardContent>
           </Card>
         </TabsContent>
+        
+        {/* Dialog for adding new milestone */}
+        <Dialog open={isNewMilestoneDialogOpen} onOpenChange={setIsNewMilestoneDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <form onSubmit={handleCreateMilestone}>
+              <DialogHeader>
+                <DialogTitle>Ajouter un jalon</DialogTitle>
+                <DialogDescription>
+                  Créez un nouveau jalon pour cette phase.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="milestoneName">Nom du jalon</Label>
+                  <Input 
+                    id="milestoneName" 
+                    name="milestoneName" 
+                    placeholder="Ex: Validation client" 
+                    value={newMilestoneName}
+                    onChange={(e) => setNewMilestoneName(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" type="button" onClick={() => setIsNewMilestoneDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button type="submit">Créer le jalon</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
         
         {/* Files tab */}
         <TabsContent value="files">
