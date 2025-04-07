@@ -2,7 +2,7 @@
 import { useMemo } from 'react';
 import { addDays, differenceInDays, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Project } from '@/lib/mock-data';
+import { Project, Milestone } from '@/lib/mock-data';
 import { cn } from '@/lib/utils';
 import { CheckSquare, Square } from 'lucide-react';
 

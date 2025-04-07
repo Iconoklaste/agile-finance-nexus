@@ -15,6 +15,13 @@ export const formatDate = (date: Date, formatStr: string = 'dd MMM yyyy') => {
 // Status types for projects
 export type ProjectStatus = 'not-started' | 'in-progress' | 'on-hold' | 'completed';
 
+// Milestone type
+export interface Milestone {
+  id: string;
+  name: string;
+  completed: boolean;
+}
+
 // Project phase type
 export type ProjectPhase = {
   id: string;
@@ -23,6 +30,7 @@ export type ProjectPhase = {
   endDate: Date;
   progress: number;
   status: ProjectStatus;
+  milestones?: Milestone[]; // Add the milestones property
 };
 
 // Project type
