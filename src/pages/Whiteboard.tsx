@@ -23,12 +23,11 @@ import {
   Upload,
   ZoomIn,
   ZoomOut,
-  PanelLeftClose,
-  PanelLeftOpen,
+  Maximize2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from "@/components/ui/resizable";
 import { cn } from "@/lib/utils";
+import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 
 export default function Whiteboard() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -39,9 +38,9 @@ export default function Whiteboard() {
   const [lastPosX, setLastPosX] = useState<number>(0);
   const [lastPosY, setLastPosY] = useState<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
-  const [defaultLayout, setDefaultLayout] = useState([20, 80]);
-  const [layout, setLayout] = useState(defaultLayout);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const fullscreenContainerRef = useRef<HTMLDivElement>(null);
+  const [isMobileToolsOpen, setIsMobileToolsOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -69,7 +68,7 @@ export default function Whiteboard() {
 
   useEffect(() => {
     handleResize();
-  }, [layout, isCollapsed]);
+  }, [isFullscreen]);
 
   const handleResize = () => {
     if (!canvasRef.current || !fabricCanvasRef.current || !containerRef.current) return;
@@ -78,7 +77,7 @@ export default function Whiteboard() {
     
     fabricCanvasRef.current.setDimensions({
       width: containerWidth,
-      height: 600,
+      height: isFullscreen ? window.innerHeight - 80 : 600,
     });
     fabricCanvasRef.current.renderAll();
   };
@@ -244,136 +243,136 @@ export default function Whiteboard() {
     }
   };
 
-  const toggleSidebar = () => {
-    if (isCollapsed) {
-      setIsCollapsed(false);
-      setLayout(defaultLayout);
-    } else {
-      setIsCollapsed(true);
-      setLayout([0, 100]);
-    }
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
   };
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Tableau Blanc Collaboratif</h1>
-        <Button 
-          variant="outline" 
-          size="icon" 
-          onClick={toggleSidebar}
-          title={isCollapsed ? "Afficher les outils" : "Masquer les outils"}
-        >
-          {isCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+  const renderToolbar = () => (
+    <div className="flex flex-col gap-4 p-4">
+      <Select value={tool} onValueChange={handleToolChange}>
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder="Sélectionner un outil" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="select">
+            <div className="flex items-center gap-2">
+              <Move size={16} /> Sélectionner
+            </div>
+          </SelectItem>
+          <SelectItem value="pan">
+            <div className="flex items-center gap-2">
+              <Move size={16} /> Déplacer la vue
+            </div>
+          </SelectItem>
+          <SelectItem value="draw">
+            <div className="flex items-center gap-2">
+              <Pencil size={16} /> Dessiner
+            </div>
+          </SelectItem>
+        </SelectContent>
+      </Select>
+      
+      <Separator className="my-2" />
+      
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="outline" onClick={() => addShape("rectangle")}>
+          <Square size={16} className="mr-1" /> Rectangle
+        </Button>
+        
+        <Button variant="outline" onClick={() => addShape("circle")}>
+          <CircleIcon size={16} className="mr-1" /> Cercle
+        </Button>
+        
+        <Button variant="outline" onClick={() => addShape("text")}>
+          <Type size={16} className="mr-1" /> Texte
         </Button>
       </div>
       
-      <ResizablePanelGroup
-        direction="horizontal"
-        className="min-h-[600px] border rounded-lg overflow-hidden"
-        onLayout={(sizes) => {
-          setLayout(sizes);
-        }}
-      >
-        <ResizablePanel 
-          defaultSize={defaultLayout[0]} 
-          size={layout[0]} 
-          minSize={15}
+      <Separator className="my-2" />
+      
+      <div className="grid grid-cols-1 gap-2">
+        <Button variant="outline" onClick={() => handleCanvasAction("clear")}>
+          <Trash2 size={16} className="mr-1" /> Effacer
+        </Button>
+        
+        <Button variant="outline" onClick={() => handleCanvasAction("save")}>
+          <Download size={16} className="mr-1" /> Sauvegarder
+        </Button>
+        
+        <Button variant="outline" onClick={() => handleCanvasAction("load")}>
+          <Upload size={16} className="mr-1" /> Charger
+        </Button>
+      </div>
+      
+      <Separator className="my-2" />
+      
+      <div className="flex gap-2 justify-center">
+        <Button variant="outline" size="icon" onClick={() => handleCanvasAction("zoomin")}>
+          <ZoomIn size={16} />
+        </Button>
+        
+        <Button variant="outline" size="icon" onClick={() => handleCanvasAction("zoomout")}>
+          <ZoomOut size={16} />
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div
+      ref={fullscreenContainerRef}
+      className={cn(
+        "space-y-4",
+        isFullscreen ? "fixed inset-0 z-50 bg-background p-4" : ""
+      )}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">Tableau Blanc Collaboratif</h1>
+        <div className="flex gap-2">
+          {/* Mobile tools drawer */}
+          <div className="block md:hidden">
+            <Drawer open={isMobileToolsOpen} onOpenChange={setIsMobileToolsOpen}>
+              <DrawerTrigger asChild>
+                <Button variant="outline">Outils</Button>
+              </DrawerTrigger>
+              <DrawerContent>
+                {renderToolbar()}
+              </DrawerContent>
+            </Drawer>
+          </div>
+          
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={toggleFullscreen}
+            title={isFullscreen ? "Quitter le mode plein écran" : "Mode plein écran"}
+          >
+            <Maximize2 size={16} />
+          </Button>
+        </div>
+      </div>
+      
+      <div className="flex md:flex-row flex-col gap-4">
+        {/* Tools sidebar - hidden on mobile */}
+        <div className="hidden md:block w-64 bg-muted rounded-lg overflow-hidden">
+          {renderToolbar()}
+        </div>
+        
+        {/* Canvas */}
+        <div 
+          ref={containerRef} 
           className={cn(
-            "bg-muted p-2",
-            isCollapsed && "hidden"
+            "flex-1 border rounded-lg overflow-hidden touch-none",
+            isFullscreen ? "h-[calc(100vh-120px)]" : "h-[600px]"
           )}
         >
-          {/* Toolbar */}
-          <div className="flex flex-col gap-4">
-            <Select value={tool} onValueChange={handleToolChange}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Sélectionner un outil" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="select">
-                  <div className="flex items-center gap-2">
-                    <Move size={16} /> Sélectionner
-                  </div>
-                </SelectItem>
-                <SelectItem value="pan">
-                  <div className="flex items-center gap-2">
-                    <Move size={16} /> Déplacer la vue
-                  </div>
-                </SelectItem>
-                <SelectItem value="draw">
-                  <div className="flex items-center gap-2">
-                    <Pencil size={16} /> Dessiner
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Separator className="my-2" />
-            
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" onClick={() => addShape("rectangle")}>
-                <Square size={16} className="mr-1" /> Rectangle
-              </Button>
-              
-              <Button variant="outline" onClick={() => addShape("circle")}>
-                <CircleIcon size={16} className="mr-1" /> Cercle
-              </Button>
-              
-              <Button variant="outline" onClick={() => addShape("text")}>
-                <Type size={16} className="mr-1" /> Texte
-              </Button>
-            </div>
-            
-            <Separator className="my-2" />
-            
-            <div className="grid grid-cols-1 gap-2">
-              <Button variant="outline" onClick={() => handleCanvasAction("clear")}>
-                <Trash2 size={16} className="mr-1" /> Effacer
-              </Button>
-              
-              <Button variant="outline" onClick={() => handleCanvasAction("save")}>
-                <Download size={16} className="mr-1" /> Sauvegarder
-              </Button>
-              
-              <Button variant="outline" onClick={() => handleCanvasAction("load")}>
-                <Upload size={16} className="mr-1" /> Charger
-              </Button>
-            </div>
-            
-            <Separator className="my-2" />
-            
-            <div className="flex gap-2 justify-center">
-              <Button variant="outline" size="icon" onClick={() => handleCanvasAction("zoomin")}>
-                <ZoomIn size={16} />
-              </Button>
-              
-              <Button variant="outline" size="icon" onClick={() => handleCanvasAction("zoomout")}>
-                <ZoomOut size={16} />
-              </Button>
-            </div>
-          </div>
-        </ResizablePanel>
-        
-        {!isCollapsed && (
-          <ResizableHandle withHandle />
-        )}
-        
-        <ResizablePanel 
-          defaultSize={defaultLayout[1]} 
-          size={layout[1]}
-          className="p-0"
-        >
-          {/* Canvas */}
-          <div ref={containerRef} className="h-full w-full touch-none">
-            <canvas
-              id="whiteboard-canvas"
-              ref={canvasRef}
-              className="w-full touch-none"
-            />
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+          <canvas
+            id="whiteboard-canvas"
+            ref={canvasRef}
+            className="w-full h-full touch-none"
+          />
+        </div>
+      </div>
     </div>
   );
 }
