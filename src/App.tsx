@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
 import Accounting from "./pages/Accounting";
+import ChartOfAccounts from "./pages/ChartOfAccounts";
 import CRM from "./pages/CRM";
 import Whiteboard from "./pages/Whiteboard";
 import Settings from "./pages/Settings";
@@ -49,6 +50,11 @@ const App = () => (
           <Route path="/app/accounting" element={
             <MainLayout>
               <Accounting />
+            </MainLayout>
+          } />
+          <Route path="/app/accounting/chart-of-accounts" element={
+            <MainLayout>
+              <ChartOfAccounts />
             </MainLayout>
           } />
           <Route path="/app/crm" element={

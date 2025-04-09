@@ -1,4 +1,3 @@
-
 import { subDays, addDays, format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -68,6 +67,30 @@ export type Client = {
   company?: string;
   address?: string;
   projects: string[];
+};
+
+// Account type for chart of accounts
+export type AccountType = 'asset' | 'liability' | 'equity' | 'revenue' | 'expense';
+
+// Account class type
+export type AccountClass = {
+  id: string;
+  code: string;
+  name: string;
+  type: AccountType;
+  description?: string;
+};
+
+// Account in chart of accounts
+export type Account = {
+  id: string;
+  code: string;
+  name: string;
+  classId: string;
+  description?: string;
+  balance: number;
+  isActive: boolean;
+  parentId?: string;
 };
 
 // Generate mock projects
@@ -161,4 +184,189 @@ export const generateMockClients = (count: number = 10): Client[] => {
       )
     };
   });
+};
+
+// Generate mock account classes for chart of accounts
+export const generateMockAccountClasses = (): AccountClass[] => {
+  return [
+    {
+      id: 'class-1',
+      code: '1',
+      name: 'Comptes de capitaux',
+      type: 'asset',
+      description: 'Capital, réserves, emprunts, provisions'
+    },
+    {
+      id: 'class-2',
+      code: '2',
+      name: 'Comptes d\'immobilisations',
+      type: 'asset',
+      description: 'Actifs durables détenus par l\'entreprise'
+    },
+    {
+      id: 'class-3',
+      code: '3',
+      name: 'Comptes de stocks et en-cours',
+      type: 'asset',
+      description: 'Biens et services produits ou acquis par l\'entreprise'
+    },
+    {
+      id: 'class-4',
+      code: '4',
+      name: 'Comptes de tiers',
+      type: 'asset',
+      description: 'Créances et dettes de l\'entreprise'
+    },
+    {
+      id: 'class-5',
+      code: '5',
+      name: 'Comptes financiers',
+      type: 'asset',
+      description: 'Opérations financières à court terme'
+    },
+    {
+      id: 'class-6',
+      code: '6',
+      name: 'Comptes de charges',
+      type: 'expense',
+      description: 'Charges d\'exploitation de l\'entreprise'
+    },
+    {
+      id: 'class-7',
+      code: '7',
+      name: 'Comptes de produits',
+      type: 'revenue',
+      description: 'Produits d\'exploitation de l\'entreprise'
+    },
+  ];
+};
+
+// Generate mock accounts for chart of accounts
+export const generateMockAccounts = (): Account[] => {
+  return [
+    // Classe 1
+    {
+      id: 'account-101',
+      code: '101',
+      name: 'Capital',
+      classId: 'class-1',
+      description: 'Capital social',
+      balance: 100000,
+      isActive: true
+    },
+    {
+      id: 'account-106',
+      code: '106',
+      name: 'Réserves',
+      classId: 'class-1',
+      description: 'Réserves légales et statutaires',
+      balance: 20000,
+      isActive: true
+    },
+    {
+      id: 'account-164',
+      code: '164',
+      name: 'Emprunts auprès des établissements de crédit',
+      classId: 'class-1',
+      description: 'Prêts bancaires',
+      balance: 50000,
+      isActive: true
+    },
+
+    // Classe 2
+    {
+      id: 'account-211',
+      code: '211',
+      name: 'Terrains',
+      classId: 'class-2',
+      description: 'Terrains nus, aménagés, sous-sol et sur-sol',
+      balance: 75000,
+      isActive: true
+    },
+    {
+      id: 'account-213',
+      code: '213',
+      name: 'Constructions',
+      classId: 'class-2',
+      description: 'Bâtiments, installations générales, agencements',
+      balance: 200000,
+      isActive: true
+    },
+    {
+      id: 'account-215',
+      code: '215',
+      name: 'Installations techniques, matériel et outillage',
+      classId: 'class-2',
+      description: 'Équipements spécifiques à l\'activité',
+      balance: 80000,
+      isActive: true
+    },
+
+    // Classe 6
+    {
+      id: 'account-601',
+      code: '601',
+      name: 'Achats de matières premières',
+      classId: 'class-6',
+      description: 'Achats de biens entrant dans le cycle de production',
+      balance: 35000,
+      isActive: true
+    },
+    {
+      id: 'account-607',
+      code: '607',
+      name: 'Achats de marchandises',
+      classId: 'class-6',
+      description: 'Achats de biens destinés à être revendus en l\'état',
+      balance: 45000,
+      isActive: true
+    },
+    {
+      id: 'account-613',
+      code: '613',
+      name: 'Locations',
+      classId: 'class-6',
+      description: 'Loyers et charges locatives',
+      balance: 12000,
+      isActive: true
+    },
+    {
+      id: 'account-641',
+      code: '641',
+      name: 'Rémunérations du personnel',
+      classId: 'class-6',
+      description: 'Salaires et appointements',
+      balance: 120000,
+      isActive: true
+    },
+
+    // Classe 7
+    {
+      id: 'account-701',
+      code: '701',
+      name: 'Ventes de produits finis',
+      classId: 'class-7',
+      description: 'Ventes de biens produits par l\'entreprise',
+      balance: 180000,
+      isActive: true
+    },
+    {
+      id: 'account-707',
+      code: '707',
+      name: 'Ventes de marchandises',
+      classId: 'class-7',
+      description: 'Ventes de biens achetés et revendus en l\'état',
+      balance: 120000,
+      isActive: true
+    },
+    {
+      id: 'account-706',
+      code: '706',
+      name: 'Prestations de services',
+      classId: 'class-7',
+      description: 'Ventes de travaux et services',
+      balance: 95000,
+      isActive: true
+    },
+  ];
 };
