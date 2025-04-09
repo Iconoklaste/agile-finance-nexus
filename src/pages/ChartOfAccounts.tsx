@@ -29,7 +29,9 @@ import {
   ToggleLeft, 
   ToggleRight,
   ArrowUpDown,
-  Euro
+  Euro,
+  Grid3X3,
+  List
 } from "lucide-react";
 import { 
   Dialog, 
@@ -65,6 +67,7 @@ import {
   Account, 
   AccountClass 
 } from "@/lib/mock-data";
+import AccountMindMap from "@/components/accounting/AccountMindMap";
 
 export default function ChartOfAccounts() {
   const { toast } = useToast();
@@ -73,6 +76,7 @@ export default function ChartOfAccounts() {
   const [currentAccount, setCurrentAccount] = useState<Account | null>(null);
   const [accounts, setAccounts] = useState<Account[]>(generateMockAccounts());
   const accountClasses = useMemo(() => generateMockAccountClasses(), []);
+  const [viewMode, setViewMode] = useState<"list" | "mindmap">("list"); // New state for view mode
   
   const form = useForm<Account>({
     defaultValues: {
@@ -186,6 +190,20 @@ export default function ChartOfAccounts() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+          
+          <Button variant="outline" className="mr-2" onClick={() => setViewMode(viewMode === "list" ? "mindmap" : "list")}>
+            {viewMode === "list" ? (
+              <>
+                <Grid3X3 className="mr-2 h-4 w-4" />
+                Vue Mentale
+              </>
+            ) : (
+              <>
+                <List className="mr-2 h-4 w-4" />
+                Vue Liste
+              </>
+            )}
+          </Button>
           
           <Dialog>
             <DialogTrigger asChild>
@@ -340,80 +358,88 @@ export default function ChartOfAccounts() {
         </div>
       </div>
       
-      <Tabs defaultValue="all">
-        <TabsList>
-          <TabsTrigger value="all">Tous les comptes</TabsTrigger>
-          <TabsTrigger value="active">Comptes actifs</TabsTrigger>
-          <TabsTrigger value="inactive">Comptes inactifs</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="all">
-          <AccountsTable 
-            accounts={filteredAccounts} 
-            accountClasses={accountClasses}
-            onToggleStatus={toggleAccountStatus}
-            onEditAccount={openEditDialog}
-            onDeleteAccount={deleteAccount}
-          />
-        </TabsContent>
-        
-        <TabsContent value="active">
-          <AccountsTable 
-            accounts={filteredAccounts.filter(acc => acc.isActive)} 
-            accountClasses={accountClasses}
-            onToggleStatus={toggleAccountStatus}
-            onEditAccount={openEditDialog}
-            onDeleteAccount={deleteAccount}
-          />
-        </TabsContent>
-        
-        <TabsContent value="inactive">
-          <AccountsTable 
-            accounts={filteredAccounts.filter(acc => !acc.isActive)} 
-            accountClasses={accountClasses}
-            onToggleStatus={toggleAccountStatus}
-            onEditAccount={openEditDialog}
-            onDeleteAccount={deleteAccount}
-          />
-        </TabsContent>
-      </Tabs>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-        {accountClasses.map((cls) => (
-          <Card key={cls.id}>
-            <CardHeader>
-              <CardTitle className="flex justify-between">
-                <span>{cls.code}. {cls.name}</span>
-                <span className="text-muted-foreground text-sm">
-                  {accounts.filter(acc => acc.classId === cls.id).length} comptes
-                </span>
-              </CardTitle>
-              <CardDescription>{cls.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
-                {accounts
-                  .filter(acc => acc.classId === cls.id)
-                  .slice(0, 5)
-                  .map(account => (
-                    <li key={account.id} className="flex justify-between items-center text-sm">
-                      <span className="font-medium">{account.code}</span>
-                      <span className="flex-1 px-2 truncate">{account.name}</span>
-                      <span className="text-muted-foreground">
-                        {account.balance.toLocaleString()} €
-                      </span>
-                    </li>
-                  ))}
-                {accounts.filter(acc => acc.classId === cls.id).length > 5 && (
-                  <li className="text-center text-sm text-muted-foreground pt-1">
-                    + {accounts.filter(acc => acc.classId === cls.id).length - 5} autres comptes
-                  </li>
-                )}
-              </ul>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {viewMode === "list" ? (
+        <>
+          <Tabs defaultValue="all">
+            <TabsList>
+              <TabsTrigger value="all">Tous les comptes</TabsTrigger>
+              <TabsTrigger value="active">Comptes actifs</TabsTrigger>
+              <TabsTrigger value="inactive">Comptes inactifs</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="all">
+              <AccountsTable 
+                accounts={filteredAccounts} 
+                accountClasses={accountClasses}
+                onToggleStatus={toggleAccountStatus}
+                onEditAccount={openEditDialog}
+                onDeleteAccount={deleteAccount}
+              />
+            </TabsContent>
+            
+            <TabsContent value="active">
+              <AccountsTable 
+                accounts={filteredAccounts.filter(acc => acc.isActive)} 
+                accountClasses={accountClasses}
+                onToggleStatus={toggleAccountStatus}
+                onEditAccount={openEditDialog}
+                onDeleteAccount={deleteAccount}
+              />
+            </TabsContent>
+            
+            <TabsContent value="inactive">
+              <AccountsTable 
+                accounts={filteredAccounts.filter(acc => !acc.isActive)} 
+                accountClasses={accountClasses}
+                onToggleStatus={toggleAccountStatus}
+                onEditAccount={openEditDialog}
+                onDeleteAccount={deleteAccount}
+              />
+            </TabsContent>
+          </Tabs>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+            {accountClasses.map((cls) => (
+              <Card key={cls.id}>
+                <CardHeader>
+                  <CardTitle className="flex justify-between">
+                    <span>{cls.code}. {cls.name}</span>
+                    <span className="text-muted-foreground text-sm">
+                      {accounts.filter(acc => acc.classId === cls.id).length} comptes
+                    </span>
+                  </CardTitle>
+                  <CardDescription>{cls.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2">
+                    {accounts
+                      .filter(acc => acc.classId === cls.id)
+                      .slice(0, 5)
+                      .map(account => (
+                        <li key={account.id} className="flex justify-between items-center text-sm">
+                          <span className="font-medium">{account.code}</span>
+                          <span className="flex-1 px-2 truncate">{account.name}</span>
+                          <span className="text-muted-foreground">
+                            {account.balance.toLocaleString()} €
+                          </span>
+                        </li>
+                      ))}
+                    {accounts.filter(acc => acc.classId === cls.id).length > 5 && (
+                      <li className="text-center text-sm text-muted-foreground pt-1">
+                        + {accounts.filter(acc => acc.classId === cls.id).length - 5} autres comptes
+                      </li>
+                    )}
+                  </ul>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="mt-6">
+          <AccountMindMap accounts={accounts} accountClasses={accountClasses} />
+        </div>
+      )}
     </div>
   );
 }
